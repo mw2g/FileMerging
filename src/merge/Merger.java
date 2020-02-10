@@ -1,3 +1,5 @@
+package merge;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -6,10 +8,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.LinkedList;
 
-public class Main {
+public class Merger {
 
-	private static int sortError;
-	private static int parseToIntError;
+	static int sortError;
+	static int parseToIntError;
 	private static int bufferSize = 1000;
 	private static Integer lastIntLine;
 	private static String lastStringLine;
@@ -18,56 +20,21 @@ public class Main {
 	private static LinkedList<String> inFileData = new LinkedList<>();
 	private static LinkedList<String> tempFileData = new LinkedList<>();
 
-	public static void main(String[] ar) {
-		
-		long start = System.currentTimeMillis();
-		String[] args = new String[6];
-
-		args[0] = "-a";
-		args[1] = "-s";
-		args[2] = "data/merged.txt";
-//		args[3] = "data/gen0.txt";
-//		args[4] = "data/gen1.txt";
-//		args[5] = "data/gen2.txt";
-//		args[6] = "data/gen3.txt";
-//		args[7] = "data/gen4.txt";
-//		args[8] = "data/gen5.txt";
-//		args[9] = "data/gen6.txt";
-//		args[10] = "data/gen7.txt";
-//		args[11] = "data/gen8.txt";
-
-		args[3] = "data/one.txt";
-		args[4] = "data/two.txt";
-		args[5] = "data/three.txt";
+	public static boolean merger(String dataType, boolean ascending, String outputFile, String[] inputFileNames) {
+		outputFileName = outputFile;
 
 		/*
-		 * Arguments handling
-		 */
-		if (args.length < 4)
-			argError();
-
-		int numOfArg = 0;
-		String sortOrder = args[numOfArg].matches("-a|-d") ? args[numOfArg++] : "-a";
-		boolean ascending = sortOrder == "-a" ? true : false;
-		String dataType = args[numOfArg].matches("-s|-i") ? args[numOfArg++] : argError();
-		outputFileName = args[numOfArg++];
-
-		String[] inputFileNames = new String[args.length - numOfArg];
-		for (int i = 0; i < inputFileNames.length; i++) {
-			inputFileNames[i] = args[numOfArg + i];
-		}
-
-		/*
-		 * Create or clear output file Create temporary file
+		 * Create or clear output file. Create temporary file
 		 */
 		try (FileWriter writerOutputFile = new FileWriter(outputFileName);
 				FileWriter writerTempFile = new FileWriter(outputFileName + "_temp")) {
 		} catch (IOException e) {
 			System.out.println("Error creating new files.");
+			return false;
 		}
 
 		/*
-		 * Main processing
+		 * Main loop
 		 */
 		for (int i = 0; i < inputFileNames.length; i++) {
 
@@ -87,18 +54,24 @@ public class Main {
 					
 					if ((inFileData.size() == bufferSize  && tempFileData.size() == bufferSize) || (!readerInputFile.ready() || !readerTempFile.ready())) {
 						Boolean tail = inFileData.isEmpty() || tempFileData.isEmpty() ? true : false;
-						if (dataType == "-i")
-							toMergeInt(ascending, tail);
-						else
-							toMergeString(ascending, tail);
+						if (dataType == "-i") {
+							if(!toMergeInt(ascending, tail)) {
+								return false;
+							}
+						}
+						else {
+							if(!toMergeString(ascending, tail)) {
+								return false;
+							}
+						}
 					}
 				}
 			} catch (FileNotFoundException e) {
 				System.out.println("Input file not found.");
-				exitByEnter();
+				return false;
 			} catch (IOException e) {
 				System.out.println("Error reading input file.");
-				exitByEnter();
+				return false;
 			}
 
 			if (i + 1 < inputFileNames.length) { // rename output file to temporary if next input file exist
@@ -113,30 +86,18 @@ public class Main {
 		}
 
 		/*
-		 * Display errors
-		 */
-		if (sortError > 0) {
-			System.out.println("Sort order in input files is broken. " + sortError + " lines have been skipped");
-		}
-
-		if (parseToIntError > 0) {
-			System.out.println("Non-number strings found. " + parseToIntError + " lines have been skipped.");
-		}
-
-		/*
 		 * Delete temporary file
 		 */
 		File tempFile = new File(outputFileName + "_temp");
 		tempFile.delete();
 		
-		long runtime = System.currentTimeMillis() - start;
-		System.out.println(runtime);
+		return true;
 	}
 
 	/*
-	 * Merging string data. Merge inFileData tempFileData and add to outputFileName
+	 * Merging string data. Merge inFileData tempFileData and add to output file.
 	 */
-	private static void toMergeString(boolean ascending, Boolean tail) {
+	private static boolean toMergeString(boolean ascending, Boolean tail) {
 		LinkedList<String> result = new LinkedList<>();
 
 		while (!inFileData.isEmpty() || !tempFileData.isEmpty()) {
@@ -165,24 +126,25 @@ public class Main {
 
 				break;
 
-			if (!result.isEmpty() && lastStringLine != null
+			if (!result.isEmpty() && lastStringLine != null							//input file sorting check
 					&& (ascending ? result.getLast().compareTo(lastStringLine) < 0
 							: result.getLast().compareTo(lastStringLine) > 0)) {
 				result.removeLast();
 				sortError++;
 			}
+			
 			if (!result.isEmpty())
 				lastStringLine = result.getLast();
 
 		}
 
-		writeResult(result);
+		return writeResult(result);
 	}
 
 	/*
-	 * Merging integer data. Merge inFileData tempFileData and add to outputFileName
+	 * Merging integer data. Merge inFileData tempFileData and add to output file.
 	 */
-	private static void toMergeInt(Boolean ascending, Boolean tail) {
+	private static boolean toMergeInt(Boolean ascending, Boolean tail) {
 		LinkedList<Integer> result = new LinkedList<>();
 		while (!inFileData.isEmpty() || !tempFileData.isEmpty()) {
 
@@ -241,13 +203,13 @@ public class Main {
 				lastIntLine = result.getLast();
 		}
 
-		writeResult(result);
+		return writeResult(result);
 	}
 
 	/*
 	 * Add result to output file
 	 */
-	private static <T> void writeResult(LinkedList<T> result) {
+	private static <T> boolean writeResult(LinkedList<T> result) {
 
 		try (FileWriter writerOutputFile = new FileWriter(outputFileName, true)) {
 			for (T res : result) {
@@ -255,7 +217,9 @@ public class Main {
 			}
 		} catch (IOException e) {
 			System.out.println("Error to writing in output file.");
+			return false;
 		}
+		return true;
 	}
 
 	/*
@@ -270,27 +234,4 @@ public class Main {
 		}
 		return in;
 	}
-
-	/*
-	 * Handling arguments error
-	 */
-	private static String argError() {
-		System.out.println("Arguments are incorrect.");
-		exitByEnter();
-		return null;
-	}
-
-	/*
-	 * Exit program by pressing Enter
-	 */
-	public static void exitByEnter() {
-		System.out.println("Press Enter to exit.");
-		try {
-			System.in.read();
-			System.exit(1);
-		} catch (IOException ignored) {
-
-		}
-	}
-
 }
