@@ -16,7 +16,7 @@ public class Start {
 
 		int numOfArg = 0;
 		String sortOrder = args[numOfArg].matches("-a|-d") ? args[numOfArg++] : "-a";
-		boolean ascending = sortOrder == "-a" ? true : false;
+		boolean ascending = sortOrder.equals("-a") ? true : false;
 		String dataType = args[numOfArg].matches("-s|-i") ? args[numOfArg++] : argError();
 		String outputFileName = args[numOfArg++];
 
@@ -32,6 +32,8 @@ public class Start {
 		
 		if (!result) {
 			exitByEnter();
+		} else {
+			System.out.println("Done.");
 		}
 		
 		/*
