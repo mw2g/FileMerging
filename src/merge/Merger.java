@@ -12,24 +12,38 @@ public class Merger {
 
 	static int sortError;
 	static int parseToIntError;
+	static int numberOfMergedStrings;
 	private static int bufferSize = 1000;
 	private static Integer lastIntLine;
 	private static String lastStringLine;
 	private static String outputFileName;
+	private static String tempFileName;
 
 	private static LinkedList<String> inFileData = new LinkedList<>();
 	private static LinkedList<String> tempFileData = new LinkedList<>();
-
+	
+	/* Method
+	 * Merging
+	 * @param dataType type of data, string or integer
+	 * @param ascending of sort
+	 * @param outputFile name of output file
+	 * @param inputFileNames array of input file names
+	 * @return boolean success rate.
+	 */
 	public static boolean merger(String dataType, boolean ascending, String outputFile, String[] inputFileNames) {
+		sortError = 0;
+		parseToIntError = 0;
 		outputFileName = outputFile;
-
+		tempFileName = outputFileName + "_temp";
+		File tempFile = new File(tempFileName);
+		
 		/*
-		 * Create or clear output file. Create temporary file
+		 * Create or clear output and temporary files
 		 */
 		try (FileWriter writerOutputFile = new FileWriter(outputFileName);
-				FileWriter writerTempFile = new FileWriter(outputFileName + "_temp")) {
+				FileWriter writerTempFile = new FileWriter(tempFileName)) {
 		} catch (IOException e) {
-			System.out.println("Error creating new files.");
+			System.out.println("Error creating new files (" + outputFileName + "," + tempFileName + ")");
 			return false;
 		}
 
@@ -37,9 +51,10 @@ public class Merger {
 		 * Main loop
 		 */
 		for (int i = 0; i < inputFileNames.length; i++) {
+			numberOfMergedStrings = 0;
 
 			try (BufferedReader readerInputFile = new BufferedReader(new FileReader(inputFileNames[i]));
-					BufferedReader readerTempFile = new BufferedReader(new FileReader(outputFileName + "_temp"))) {
+					BufferedReader readerTempFile = new BufferedReader(new FileReader(tempFileName))) {
 				
 				while (true) {
 					if (readerInputFile.ready() && inFileData.size() < bufferSize)
@@ -54,47 +69,48 @@ public class Merger {
 					
 					if ((inFileData.size() == bufferSize  && tempFileData.size() == bufferSize) || (!readerInputFile.ready() || !readerTempFile.ready())) {
 						Boolean tail = inFileData.isEmpty() || tempFileData.isEmpty() ? true : false;
-						if (dataType == "-i") {
+						if (dataType.equals("-i")) {
 							if(!toMergeInt(ascending, tail)) {
+								tempFile.delete();
 								return false;
 							}
 						}
 						else {
 							if(!toMergeString(ascending, tail)) {
+								tempFile.delete();
 								return false;
 							}
 						}
 					}
 				}
 			} catch (FileNotFoundException e) {
-				System.out.println("Input file not found.");
+				System.out.println("Input file not found (" + inputFileNames[i] + ")");
+				tempFile.delete();
 				return false;
 			} catch (IOException e) {
-				System.out.println("Error reading input file.");
+				System.out.println("Error reading input file (" + inputFileNames[i] + ")");
+				tempFile.delete();
 				return false;
 			}
 
-			if (i + 1 < inputFileNames.length) { // rename output file to temporary if next input file exist
-				File temp = new File(outputFileName + "_temp");
-				temp.delete();
-				new File(outputFileName).renameTo(temp);
+			if (i + 1 < inputFileNames.length) { 			// rename output file to temporary if next input file exist
+				tempFile.delete();
+				if(!new File(outputFileName).renameTo(tempFile)) {
+					System.out.println("Error renaming output file to temp file (" + outputFileName+ "to" + tempFileName + ")");
+					return false;
+				}
 			}
 
-			lastIntLine = null; // resetting last line when moving to the next file
+			lastIntLine = null; 							// resetting last line when moving to the next file
 			lastStringLine = null;
-
 		}
-
-		/*
-		 * Delete temporary file
-		 */
-		File tempFile = new File(outputFileName + "_temp");
+		
 		tempFile.delete();
 		
 		return true;
 	}
 
-	/*
+	/* Method
 	 * Merging string data. Merge inFileData tempFileData and add to output file.
 	 */
 	private static boolean toMergeString(boolean ascending, Boolean tail) {
@@ -141,7 +157,7 @@ public class Merger {
 		return writeResult(result);
 	}
 
-	/*
+	/* Method
 	 * Merging integer data. Merge inFileData tempFileData and add to output file.
 	 */
 	private static boolean toMergeInt(Boolean ascending, Boolean tail) {
@@ -206,7 +222,7 @@ public class Merger {
 		return writeResult(result);
 	}
 
-	/*
+	/* Method
 	 * Add result to output file
 	 */
 	private static <T> boolean writeResult(LinkedList<T> result) {
@@ -216,13 +232,14 @@ public class Merger {
 				writerOutputFile.write(res + "\n");
 			}
 		} catch (IOException e) {
-			System.out.println("Error to writing in output file.");
+			System.out.println("Error to writing in output file (" + outputFileName + ")");
 			return false;
 		}
+		numberOfMergedStrings++;
 		return true;
 	}
 
-	/*
+	/* Method
 	 * Parsing string to integer
 	 */
 	private static Integer parseToInt(String str) {

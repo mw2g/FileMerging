@@ -6,6 +6,7 @@ public class Test {
 	public static void main(String[] args) {
 
 		Random rnd = new Random(System.currentTimeMillis());
+		// start param		-a -s data/merged.txt data/str0.txt data/str1.txt data/str2.txt data/str3.txt data/str4.txt data/str5.txt data/str6.txt data/str7.txt data/str8.txt
 //		
 //		for (int i = 0; i < 9; i++) {
 //			int number = 1;
