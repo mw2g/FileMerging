@@ -1,6 +1,7 @@
 package merge;
 
 import java.io.IOException;
+import java.util.Set;
 
 public class Start {
 
@@ -11,7 +12,7 @@ public class Start {
 		/*
 		 * Arguments handling
 		 */
-		if (args.length < 3)
+		if (args.length < 3 || (args[0].matches("-a|-d") && args.length < 4))
 			argError();
 
 		int numOfArg = 0;
@@ -37,7 +38,7 @@ public class Start {
 			exitByEnter();
 		}
 		
-		displayErrors(Merger.sortError, Merger.parseToIntError);
+		displayErrors(Merger.sortError, Merger.parseToIntError, Merger.sortErrorFiles, Merger.intErrorFiles);
 		
 		/*
 		 * Time of completion
@@ -49,13 +50,13 @@ public class Start {
 	/* Method
 	 * Display errors
 	 */
-	private static void displayErrors(int sortError, int parseToIntError) {
+	private static void displayErrors(int sortError, int parseToIntError, Set<String> sortErrorFiles, Set<String> intErrorFiles) {
 		if (sortError > 0) {
-			System.out.println("Sort order in input files is broken. " + sortError + " lines have been skipped");
+			System.out.println("Sort order in input files " + sortErrorFiles + " is broken. " + sortError + " lines have been skipped");
 		}
 
 		if (parseToIntError > 0) {
-			System.out.println("Non-number strings found. " + parseToIntError + " lines have been skipped.");
+			System.out.println("Non-number strings found in files " + intErrorFiles + " " + parseToIntError + " lines have been skipped.");
 		}
 	}
 
@@ -67,7 +68,7 @@ public class Start {
 	private static String argError() {
 		System.out.println("Arguments are incorrect.");
 		System.out.println("Parameter Order:");
-		System.out.println("1. Sort mode (-a or -d) Optional. Default ascending.");
+		System.out.println("1. Sort order (-a or -d) Optional. Default ascending.");
 		System.out.println("2. Data type (-i or -s) Required.");
 		System.out.println("3. Output file name. Required.");
 		System.out.println("4 and next. Input file names. Required at least one.");

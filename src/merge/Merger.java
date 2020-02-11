@@ -6,13 +6,17 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Set;
 
 public class Merger {
 
 	static int sortError;
 	static int parseToIntError;
 	static int numberOfMergedStrings;
+	static Set<String> sortErrorFiles = new HashSet<>();
+	static Set<String> intErrorFiles = new HashSet<>();
 	private static int bufferSize = 1000;
 	private static Integer lastIntLine;
 	private static String lastStringLine;
@@ -33,6 +37,9 @@ public class Merger {
 	public static boolean merger(String dataType, boolean ascending, String outputFile, String[] inputFileNames) {
 		sortError = 0;
 		parseToIntError = 0;
+		parseToIntError = 0;
+		sortErrorFiles.clear();
+		intErrorFiles.clear();
 		outputFileName = outputFile;
 		tempFileName = outputFileName + "_temp";
 		File tempFile = new File(tempFileName);
@@ -70,13 +77,13 @@ public class Merger {
 					if ((inFileData.size() == bufferSize  && tempFileData.size() == bufferSize) || (!readerInputFile.ready() || !readerTempFile.ready())) {
 						Boolean tail = inFileData.isEmpty() || tempFileData.isEmpty() ? true : false;
 						if (dataType.equals("-i")) {
-							if(!toMergeInt(ascending, tail)) {
+							if(!toMergeInt(ascending, tail, inputFileNames[i])) {
 								tempFile.delete();
 								return false;
 							}
 						}
 						else {
-							if(!toMergeString(ascending, tail)) {
+							if(!toMergeString(ascending, tail, inputFileNames[i])) {
 								tempFile.delete();
 								return false;
 							}
@@ -112,8 +119,12 @@ public class Merger {
 
 	/* Method
 	 * Merging string data. Merge inFileData tempFileData and add to output file.
+	 * @param ascending of sort
+	 * @param tail true if tail of files
+	 * @param inputFileName input file name
+	 * @return boolean success rate.
 	 */
-	private static boolean toMergeString(boolean ascending, Boolean tail) {
+	private static boolean toMergeString(boolean ascending, Boolean tail, String inputFileName) {
 		LinkedList<String> result = new LinkedList<>();
 
 		while (!inFileData.isEmpty() || !tempFileData.isEmpty()) {
@@ -146,6 +157,7 @@ public class Merger {
 					&& (ascending ? result.getLast().compareTo(lastStringLine) < 0
 							: result.getLast().compareTo(lastStringLine) > 0)) {
 				result.removeLast();
+				sortErrorFiles.add(inputFileName);
 				sortError++;
 			}
 			
@@ -159,20 +171,24 @@ public class Merger {
 
 	/* Method
 	 * Merging integer data. Merge inFileData tempFileData and add to output file.
+	 * @param ascending of sort
+	 * @param tail true if tail of files
+	 * @param inputFileName input file name
+	 * @return boolean success rate.
 	 */
-	private static boolean toMergeInt(Boolean ascending, Boolean tail) {
+	private static boolean toMergeInt(Boolean ascending, Boolean tail, String inputFileName) {
 		LinkedList<Integer> result = new LinkedList<>();
 		while (!inFileData.isEmpty() || !tempFileData.isEmpty()) {
 
 			if (!inFileData.isEmpty() && !tempFileData.isEmpty()) {
 
-				Integer inF = parseToInt(inFileData.getFirst());
+				Integer inF = parseToInt(inFileData.getFirst(), inputFileName);
 				if (inF == null) {
 					inFileData.removeFirst();
 					continue;
 				}
 
-				Integer tempF = parseToInt(tempFileData.getFirst());
+				Integer tempF = parseToInt(tempFileData.getFirst(), inputFileName);
 				if (tempF == null) {
 					tempFileData.removeFirst();
 					continue;
@@ -187,7 +203,7 @@ public class Merger {
 
 			} else if (!inFileData.isEmpty() && tail) {
 
-				Integer inF = parseToInt(inFileData.getFirst());
+				Integer inF = parseToInt(inFileData.getFirst(), inputFileName);
 				if (inF == null) {
 					inFileData.removeFirst();
 					continue;
@@ -197,7 +213,7 @@ public class Merger {
 
 			} else if (!tempFileData.isEmpty() && tail) {
 
-				Integer tempF = parseToInt(tempFileData.getFirst());
+				Integer tempF = parseToInt(tempFileData.getFirst(), inputFileName);
 				if (tempF == null) {
 					tempFileData.removeFirst();
 					continue;
@@ -212,6 +228,7 @@ public class Merger {
 			if (!result.isEmpty() && lastIntLine != null // Checking errors of sort
 					&& (ascending ? result.getLast() < lastIntLine : result.getLast() > lastIntLine)) {
 				result.removeLast();
+				sortErrorFiles.add(inputFileName);
 				sortError++;
 			}
 
@@ -224,29 +241,35 @@ public class Merger {
 
 	/* Method
 	 * Add result to output file
+	 * @param result list to output file
+	 * @return boolean success rate.
 	 */
 	private static <T> boolean writeResult(LinkedList<T> result) {
 
 		try (FileWriter writerOutputFile = new FileWriter(outputFileName, true)) {
 			for (T res : result) {
 				writerOutputFile.write(res + "\n");
+				numberOfMergedStrings++;
 			}
 		} catch (IOException e) {
 			System.out.println("Error to writing in output file (" + outputFileName + ")");
 			return false;
 		}
-		numberOfMergedStrings++;
 		return true;
 	}
 
 	/* Method
 	 * Parsing string to integer
+	 * @param str string
+	 * @param inputFileName input file name
+	 * @return Integer return result integer or null if error
 	 */
-	private static Integer parseToInt(String str) {
+	private static Integer parseToInt(String str, String inputFileName) {
 		Integer in = null;
 		try {
 			in = Integer.parseInt(str);
 		} catch (NumberFormatException e) {
+			intErrorFiles.add(inputFileName);
 			parseToIntError++;
 		}
 		return in;
